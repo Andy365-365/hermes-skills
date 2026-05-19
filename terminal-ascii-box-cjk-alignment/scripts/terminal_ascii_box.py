@@ -87,7 +87,8 @@ def make_table(headers, rows, col_widths=None):
     cells = [pad_to(headers[c], col_widths[c] - 2) for c in range(ncols)]
     header_inner = '│ ' + ' │ '.join(cells) + ' │'
 
-    sep = '├' + '┤'.join('─' * (w + 2) for w in col_widths)
+    sep_parts = ['─' * (w + 2) for w in col_widths]
+    sep = '├' + '┼'.join(sep_parts) + '┤'
 
     top = '┌' + '┬'.join('─' * (w + 2) for w in col_widths) + '┐'
     bot = '└' + '┴'.join('─' * (w + 2) for w in col_widths) + '┘'
