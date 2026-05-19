@@ -87,11 +87,11 @@ def make_table(headers, rows, col_widths=None):
     cells = [pad_to(headers[c], col_widths[c] - 2) for c in range(ncols)]
     header_inner = '│ ' + ' │ '.join(cells) + ' │'
 
-    sep_parts = ['─' * (w + 2) for w in col_widths]
+    sep_parts = ['─' * w for w in col_widths]
     sep = '├' + '┼'.join(sep_parts) + '┤'
 
-    top = '┌' + '┬'.join('─' * (w + 2) for w in col_widths) + '┐'
-    bot = '└' + '┴'.join('─' * (w + 2) for w in col_widths) + '┘'
+    top = '┌' + '┬'.join('─' * w for w in col_widths) + '┐'
+    bot = '└' + '┴'.join('─' * w for w in col_widths) + '┘'
 
     data = []
     for row in rows:
@@ -161,10 +161,18 @@ def connect_boxes_vertical(boxes, labels=None):
     for b in boxes:
         bw = box_width(b)
         if bw < max_w:
-            padded = [pad_to(line, max_w) for line in b]
-            padded[0] = '┌' + '─' * max_w + '┐'
-            padded[-1] = '└' + '─' * max_w + '┘'
-            normalized.append(padded)
+            # Rebuild box with wider content area
+            new_lines = []
+            for j, line in enumerate(b):
+                if j == 0:
+                    new_lines.append('┌' + '─' * max_w + '┐')
+                elif j == len(b) - 1:
+                    new_lines.append('└' + '─' * max_w + '┘')
+                else:
+                    # Extract content between │ ... │ and re-pad
+                    inner = line[2:-2] if line.startswith('│ ') and line.endswith(' │') else line[1:]
+                    new_lines.append('│ ' + pad_to(inner, max_w - 4) + ' │')
+            normalized.append(new_lines)
         else:
             normalized.append(list(b))
 

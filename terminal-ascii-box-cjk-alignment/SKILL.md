@@ -105,11 +105,12 @@ def make_table(headers, rows, col_widths=None):
     header_inner = '│ ' + ' │ '.join(cells) + ' │'
 
     # 分隔线
-    sep = '├' + '┤'.join('─' * (w + 2) for w in col_widths)
+    sep_parts = ['─' * w for w in col_widths]
+    sep = '├' + '┼'.join(sep_parts) + '┤'
 
     # 顶/底边框
-    top = '┌' + '┬'.join('─' * (w + 2) for w in col_widths) + '┐'
-    bot = '└' + '┴'.join('─' * (w + 2) for w in col_widths) + '┘'
+    top = '┌' + '┬'.join('─' * w for w in col_widths) + '┐'
+    bot = '└' + '┴'.join('─' * w for w in col_widths) + '┘'
 
     # 数据行
     data = []
@@ -137,13 +138,13 @@ print('\n'.join(table))
 
 输出：
 ```
-┌──────────────────┬──────────────────┬────────────┬──────────────┐
+┌────────────────┬────────────────┬──────────┬────────────┐
 │ 平台           │ 配置方式       │ 免费额度 │ 适用场景   │
-├──────────────────┤──────────────────┤────────────┤──────────────┤
+├────────────────┼────────────────┼──────────┼────────────┤
 │ GitHub Actions │ YAML           │ 开源无限 │ 最主流     │
 │ GitLab CI      │ .gitlab-ci.yml │ 开源自建 │ 企业内网   │
 │ Jenkins        │ Groovy DSL     │ 完全免费 │ 老牌插件多 │
-└──────────────────┴──────────────────┴────────────┴──────────────┘
+└────────────────┴────────────────┴──────────┴────────────┘
 ```
 
 ### connect_boxes_vertical — 垂直流程图
@@ -171,10 +172,16 @@ def connect_boxes_vertical(boxes, labels=None):
     for b in boxes:
         bw = box_width(b)
         if bw < max_w:
-            padded = [pad_to(line, max_w) for line in b]
-            padded[0] = '┌' + '─' * max_w + '┐'
-            padded[-1] = '└' + '─' * max_w + '┘'
-            normalized.append(padded)
+            new_lines = []
+            for j, line in enumerate(b):
+                if j == 0:
+                    new_lines.append('┌' + '─' * max_w + '┐')
+                elif j == len(b) - 1:
+                    new_lines.append('└' + '─' * max_w + '┘')
+                else:
+                    inner = line[2:-2] if line.startswith('│ ') and line.endswith(' │') else line[1:]
+                    new_lines.append('│ ' + pad_to(inner, max_w - 4) + ' │')
+            normalized.append(new_lines)
         else:
             normalized.append(list(b))
 
@@ -214,29 +221,29 @@ print('\n'.join(chart))
 
 输出：
 ```
-┌────────────────────────┐
-│ 触发 CI Pipeline │    │
-└───────────┬────────────┘
-           │ 通过
-           ▼
-┌────────────────────────┐
-│ 1. Lint 与静态检查 │  │
-└───────────┬────────────┘
-           │ 通过
-           ▼
-┌────────────────────────┐
-│ 2. 单元测试 │         │
-└───────────┬────────────┘
-           │ 通过
-           ▼
-┌────────────────────────┐
-│ 3. 构建打包 │         │
-└───────────┬────────────┘
-           │
-           ▼
-┌────────────────────────┐
-│ 4. 部署到生产环境 │   │
-└────────────────────────┘
+┌──────────────────────┐
+│ 触发 CI Pipeline   │
+└──────────┬───────────┘
+          │ 通过
+          ▼
+┌────────────────────┐
+│ 1. Lint 与静态检查 │
+└──────────┬─────────┘
+          │ 通过
+          ▼
+┌──────────────────────┐
+│ 2. 单元测试        │
+└──────────┬───────────┘
+          │ 通过
+          ▼
+┌──────────────────────┐
+│ 3. 构建打包        │
+└──────────┬───────────┘
+          │
+          ▼
+┌──────────────────────┐
+│ 4. 部署到生产环境  │
+└──────────────────────┘
 ```
 
 ### make_flowchart — 快捷流程图
