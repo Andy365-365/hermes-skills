@@ -188,10 +188,10 @@ def connect_boxes_vertical(boxes, labels=None):
             result[-1] = ''.join(last_line)
 
             label = labels[i] if i < len(labels) else ''
-            conn = (' ' * (stem_col - 1) + '│ ' + label) if label else \
-                    ' ' * (stem_col - 1) + '│'
+            conn = (' ' * stem_col + '│ ' + label) if label else \
+                    ' ' * stem_col + '│'
             result.append(pad_to(conn, max_w))
-            result.append(pad_to(' ' * (stem_col - 1) + '▼', max_w))
+            result.append(pad_to(' ' * stem_col + '▼', max_w))
 
     return result
 
@@ -212,36 +212,46 @@ def connect_boxes_horizontal(boxes, labels=None):
 
     max_h = max(len(b) for b in boxes)
 
-    segments = [list(boxes[0])]
-    for i in range(1, len(boxes)):
-        label = labels[i - 1] if i - 1 < len(labels) else ''
+    # Build segments: box, arrow, box, arrow, ...
+    segments = []
+    segment_widths = []
 
-        if label:
-            arrow_line = '  ─' + ' ' + label + ' ' + '─►  '
-        else:
-            arrow_line = '  ────►  '
+    for i, box in enumerate(boxes):
+        # Pad box to max_h with blank lines (spaces matching box width)
+        bw = box_width(box)
+        padded = list(box) + [' ' * bw] * (max_h - len(box))
+        segments.append(padded)
+        segment_widths.append(bw)
 
-        arrow_h = 3
-        top_pad = (max_h - arrow_h) // 2
-        bot_pad = max_h - arrow_h - top_pad
+        if i < len(boxes) - 1:
+            label = labels[i] if i < len(labels) else ''
+            if label:
+                arrow_line = '  ──' + label + '──►  '
+            else:
+                arrow_line = '  ────►  '
 
-        arrow_block = (
-            [''] * top_pad +
-            [arrow_line] +
-            [''] * bot_pad
-        )
-        segments.append(arrow_block)
-        segments.append(list(boxes[i]))
+            arrow_w = visual_width(arrow_line)
+            # Center arrow vertically within max_h rows
+            arrow_h = 1
+            top_pad = (max_h - arrow_h) // 2
+            bot_pad = max_h - arrow_h - top_pad
 
+            arrow_block = (
+                [' ' * arrow_w] * top_pad +
+                [arrow_line] +
+                [' ' * arrow_w] * bot_pad
+            )
+            segments.append(arrow_block)
+            segment_widths.append(arrow_w)
+
+    # Stitch row by row
     result = []
     for row_i in range(max_h):
         line = ''
         for seg in segments:
             if row_i < len(seg):
                 line += seg[row_i]
-            line += '  '
-        line = line.rstrip()
-        result.append(line)
+        result.append(line.rstrip())
 
     return result
 
