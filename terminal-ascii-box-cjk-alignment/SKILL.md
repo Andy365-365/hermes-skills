@@ -168,6 +168,8 @@ def connect_boxes_vertical(boxes, labels=None):
 
     # 统一宽度
     max_w = max(box_width(b) for b in boxes)
+    # box_width 含角字符(┌...┐)，dash 数量 = max_w - 2
+    dash_w = max_w - 2
     normalized = []
     for b in boxes:
         bw = box_width(b)
@@ -175,12 +177,12 @@ def connect_boxes_vertical(boxes, labels=None):
             new_lines = []
             for j, line in enumerate(b):
                 if j == 0:
-                    new_lines.append('┌' + '─' * max_w + '┐')
+                    new_lines.append('┌' + '─' * dash_w + '┐')
                 elif j == len(b) - 1:
-                    new_lines.append('└' + '─' * max_w + '┘')
+                    new_lines.append('└' + '─' * dash_w + '┘')
                 else:
                     inner = line[2:-2] if line.startswith('│ ') and line.endswith(' │') else line[1:]
-                    new_lines.append('│ ' + pad_to(inner, max_w - 4) + ' │')
+                    new_lines.append('│ ' + pad_to(inner, dash_w - 2) + ' │')
             normalized.append(new_lines)
         else:
             normalized.append(list(b))
@@ -197,10 +199,10 @@ def connect_boxes_vertical(boxes, labels=None):
             result[-1] = ''.join(last_line)
 
             label = labels[i] if i < len(labels) else ''
-            conn = (' ' * (stem_col - 1) + '│ ' + label) if label else \
-                    ' ' * (stem_col - 1) + '│'
+            conn = (' ' * stem_col + '│ ' + label) if label else \
+                    ' ' * stem_col + '│'
             result.append(pad_to(conn, max_w))
-            result.append(pad_to(' ' * (stem_col - 1) + '▼', max_w))
+            result.append(pad_to(' ' * stem_col + '▼', max_w))
 
     return result
 ```
@@ -221,29 +223,29 @@ print('\n'.join(chart))
 
 输出：
 ```
-┌──────────────────────┐
+┌────────────────────┐
 │ 触发 CI Pipeline   │
-└──────────┬───────────┘
-          │ 通过
-          ▼
+└──────────┬─────────┘
+           │ 通过
+           ▼
 ┌────────────────────┐
 │ 1. Lint 与静态检查 │
 └──────────┬─────────┘
-          │ 通过
-          ▼
-┌──────────────────────┐
+           │ 通过
+           ▼
+┌────────────────────┐
 │ 2. 单元测试        │
-└──────────┬───────────┘
-          │ 通过
-          ▼
-┌──────────────────────┐
+└──────────┬─────────┘
+           │ 通过
+           ▼
+┌────────────────────┐
 │ 3. 构建打包        │
-└──────────┬───────────┘
-          │
-          ▼
-┌──────────────────────┐
+└──────────┬─────────┘
+           │
+           ▼
+┌────────────────────┐
 │ 4. 部署到生产环境  │
-└──────────────────────┘
+└────────────────────┘
 ```
 
 ### make_flowchart — 快捷流程图
@@ -355,7 +357,47 @@ def connect_boxes_horizontal(boxes, labels=None):
 
     返回：组合后的行列表
     """
-    # ... (见完整实现)
+    if not boxes:
+        return []
+    if labels is None:
+        labels = [''] * (len(boxes) - 1)
+
+    max_h = max(len(b) for b in boxes)
+
+    segments = []
+    for i, box in enumerate(boxes):
+        bw = box_width(box)
+        padded = list(box) + [' ' * bw] * (max_h - len(box))
+        segments.append(padded)
+
+        if i < len(boxes) - 1:
+            label = labels[i] if i < len(labels) else ''
+            if label:
+                arrow_mid = '─' + label + '─►'
+            else:
+                arrow_mid = '───►'
+
+            arrow_w = visual_width(arrow_mid)
+            arrow_h = 1
+            top_pad = (max_h - arrow_h) // 2
+            bot_pad = max_h - arrow_h - top_pad
+
+            arrow_block = (
+                [' ' * arrow_w] * top_pad +
+                [arrow_mid] +
+                [' ' * arrow_w] * bot_pad
+            )
+            segments.append(arrow_block)
+
+    result = []
+    for row_i in range(max_h):
+        line = ''
+        for seg in segments:
+            if row_i < len(seg):
+                line += seg[row_i]
+        result.append(line.rstrip())
+
+    return result
 ```
 
 **示例：**
@@ -370,10 +412,10 @@ print('\n'.join(layout))
 
 输出：
 ```
-┌──────────────────┐    ─ 检查通过 ─►    ┌──────────────────┐    ─ 测试通过 ─►    ┌──────────────────┐
-│ 代码检查         │    │ 运行测试         │    │ 构建部署         │
-│ ruff, mypy       │    │ pytest           │    │ Docker           │
-└──────────────────┘    └──────────────────┘    └──────────────────┘
+┌──────────────────┐           ┌──────────────────┐           ┌──────────────────┐
+│ 代码检查         │─检查通过─►│ 运行测试         │─测试通过─►│ 构建部署         │
+│ ruff, mypy       │           │ pytest           │           │ Docker           │
+└──────────────────┘           └──────────────────┘           └──────────────────┘
 ```
 
 ## 辅助函数
@@ -417,7 +459,11 @@ dashes 数量必须等于 `col_width`（不是 `col_width + 2`）。
 
 `connect_boxes_vertical` 统一方框宽度时，错误做法是对整行 `pad_to(line, max_w)` ——这会在右侧 `│` 后面加空格，导致 `│` 位置偏移。
 
-正确做法：提取 `│` 之间的内容（`line[2:-2]`），用 `pad_to(inner, max_w - 4)` 扩展内容区域，然后重新拼接 `'│ ' + inner + ' │'`。这样 `│` 始终在固定位置。
+正确做法：提取 `│` 之间的内容（`line[2:-2]`），用 `pad_to(inner, dash_w - 2)` 扩展内容区域（其中 `dash_w = max_w - 2`），然后重新拼接 `'│ ' + inner + ' │'`。这样 `│` 始终在固定位置。
+
+### box_width 返回含角字符的完整宽度
+
+`box_width()` 返回 `visual_width(box[0])`，即 `┌` + dashes + `┐` 的总宽度。在 `connect_boxes_vertical` 中统一宽度时，`─` 的数量应该是 `max_w - 2`（减去两个角字符）。
 
 ### 表格分隔线必须用 `┼`（T 型交叉），不能用 `┤`
 
