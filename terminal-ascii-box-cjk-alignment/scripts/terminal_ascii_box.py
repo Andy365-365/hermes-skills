@@ -157,6 +157,8 @@ def connect_boxes_vertical(boxes, labels=None):
         labels = [''] * (len(boxes) - 1)
 
     max_w = max(box_width(b) for b in boxes)
+    # box_width includes corner chars (┌...┐), so dash count = max_w - 2
+    dash_w = max_w - 2
     normalized = []
     for b in boxes:
         bw = box_width(b)
@@ -165,13 +167,13 @@ def connect_boxes_vertical(boxes, labels=None):
             new_lines = []
             for j, line in enumerate(b):
                 if j == 0:
-                    new_lines.append('┌' + '─' * max_w + '┐')
+                    new_lines.append('┌' + '─' * dash_w + '┐')
                 elif j == len(b) - 1:
-                    new_lines.append('└' + '─' * max_w + '┘')
+                    new_lines.append('└' + '─' * dash_w + '┘')
                 else:
                     # Extract content between │ ... │ and re-pad
                     inner = line[2:-2] if line.startswith('│ ') and line.endswith(' │') else line[1:]
-                    new_lines.append('│ ' + pad_to(inner, max_w - 4) + ' │')
+                    new_lines.append('│ ' + pad_to(inner, dash_w - 2) + ' │')
             normalized.append(new_lines)
         else:
             normalized.append(list(b))
@@ -214,35 +216,34 @@ def connect_boxes_horizontal(boxes, labels=None):
 
     # Build segments: box, arrow, box, arrow, ...
     segments = []
-    segment_widths = []
 
     for i, box in enumerate(boxes):
         # Pad box to max_h with blank lines (spaces matching box width)
         bw = box_width(box)
         padded = list(box) + [' ' * bw] * (max_h - len(box))
         segments.append(padded)
-        segment_widths.append(bw)
 
         if i < len(boxes) - 1:
             label = labels[i] if i < len(labels) else ''
             if label:
-                arrow_line = '  ──' + label + '──►  '
+                # Arrow: '─' + label + '─►'
+                arrow_mid = '─' + label + '─►'
             else:
-                arrow_line = '  ────►  '
+                arrow_mid = '───►'
 
-            arrow_w = visual_width(arrow_line)
+            arrow_w = visual_width(arrow_mid)
             # Center arrow vertically within max_h rows
             arrow_h = 1
             top_pad = (max_h - arrow_h) // 2
             bot_pad = max_h - arrow_h - top_pad
 
+            # Pad empty rows with spaces matching arrow width
             arrow_block = (
                 [' ' * arrow_w] * top_pad +
-                [arrow_line] +
+                [arrow_mid] +
                 [' ' * arrow_w] * bot_pad
             )
             segments.append(arrow_block)
-            segment_widths.append(arrow_w)
 
     # Stitch row by row
     result = []
