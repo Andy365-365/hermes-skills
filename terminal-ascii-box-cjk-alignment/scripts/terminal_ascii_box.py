@@ -245,6 +245,12 @@ def connect_boxes_horizontal(boxes, labels=None):
             )
             segments.append(arrow_block)
 
+    # Calculate total width
+    total_w = 0
+    for seg in segments:
+        seg_w = max(visual_width(line) for line in seg)
+        total_w += seg_w
+
     # Stitch row by row
     result = []
     for row_i in range(max_h):
@@ -252,7 +258,7 @@ def connect_boxes_horizontal(boxes, labels=None):
         for seg in segments:
             if row_i < len(seg):
                 line += seg[row_i]
-        result.append(line.rstrip())
+        result.append(pad_to(line.rstrip(), total_w))
 
     return result
 
